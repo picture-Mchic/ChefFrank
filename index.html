@@ -415,7 +415,10 @@
   <div id="viewAdmin" class="view">
     <div class="admin-header">
       <div class="search-row" style="margin:0; flex:1; max-width:300px;"><input id="adminSearch" placeholder="ค้นหาเมนู..."></div>
-      <button class="add-btn" id="addMenuItemBtn">➕ เพิ่มเมนู</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="add-btn" id="addMenuItemBtn">➕ เพิ่มเมนู</button>
+        <button id="resetDataBtn" style="background:#C1440E; color:#fff; border:none; padding:8px 18px; border-radius:999px; font-family:'Kanit'; font-weight:600; cursor:pointer;">🔄 รีเซ็ตข้อมูล</button>
+      </div>
     </div>
     <div id="adminContent"></div>
   </div>
@@ -657,17 +660,20 @@ function elapsedLabel(ts){
 }
 
 function formatDate(ts){
+  if(!ts || isNaN(ts)) return '—';
   const d = new Date(ts);
   return d.toLocaleDateString('th-TH') + ' ' + d.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
 }
 
 function isToday(ts){
+  if(!ts) return false;
   const today = new Date();
   const d = new Date(ts);
   return d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
 }
 
 function isThisMonth(ts){
+  if(!ts) return false;
   const today = new Date();
   const d = new Date(ts);
   return d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth();
@@ -754,7 +760,7 @@ async function syncFromServer(){
     if(activeTab === 'history') renderHistory();
     if(activeTab === 'admin') renderAdmin();
     updateKitchenBadge();
-    renderCustomerProgress(); // อัปเดตสถานะออเดอร์ลูกค้า
+    renderCustomerProgress();
   }catch(e){}
   _syncing = false;
 }
@@ -951,7 +957,7 @@ $('sendOrderBtn').onclick = async ()=>{
 };
 
 // ============================================================
-// RENDER: CUSTOMER ORDER PROGRESS (แสดงสถานะออเดอร์ปัจจุบัน)
+// RENDER: CUSTOMER ORDER PROGRESS
 // ============================================================
 function renderCustomerProgress(){
   const container = $('orderProgress');
@@ -984,7 +990,7 @@ function renderCustomerProgress(){
 }
 
 // ============================================================
-// RENDER: KITCHEN (แสดงรายการที่รอทำ แยกตามโต๊ะ)
+// RENDER: KITCHEN
 // ============================================================
 function renderKitchen(){
   const container = $('kitchenContent');
@@ -1324,6 +1330,17 @@ $('adminMenuCancelBtn').onclick = ()=>{ $('adminMenuModal').classList.remove('sh
 $('addMenuItemBtn').onclick = ()=>{ openAdminMenuModal(null); };
 
 // ============================================================
+// RESET BUTTON (ล้าง localStorage)
+// ============================================================
+document.getElementById('resetDataBtn')?.addEventListener('click', ()=>{
+  if(confirm('⚠️ ยืนยันล้างข้อมูลทั้งหมดในเครื่องนี้? (ไม่กระทบข้อมูลใน Google Sheets)')) {
+    localStorage.clear();
+    showToast('🔄 ล้างข้อมูลแล้ว กำลังรีเฟรช...');
+    setTimeout(() => location.reload(), 500);
+  }
+});
+
+// ============================================================
 // TABS & STAFF ACCESS
 // ============================================================
 function applyAccessMode(){
@@ -1332,11 +1349,8 @@ function applyAccessMode(){
   const switcher = $('staffSwitcher');
   if(!isStaff){
     switcher.style.display = 'none';
-    // ถ้าไม่ใช่ Staff ให้ซ่อนแท็บ Staff และบังคับอยู่หน้าลูกค้า
     ['tabKitchen','tabBilling','tabHistory','tabAdmin'].forEach(id => $(id).style.display = 'none');
-    // เอาคลาส active ออกจากปุ่ม Staff ถ้ามี
     ['tabKitchen','tabBilling','tabHistory','tabAdmin'].forEach(id => $(id).classList.remove('active'));
-    // ถ้า active view ไม่ใช่ customer ให้สลับไป customer
     if(!$('viewCustomer').classList.contains('active')){
       switchTab('tabCustomer');
     }
@@ -1368,7 +1382,6 @@ function switchTab(tabId){
   if(tabId === 'tabAdmin') renderAdmin();
 }
 
-// ผูก event tabs
 ['tabCustomer','tabKitchen','tabBilling','tabHistory','tabAdmin'].forEach(id => {
   $(id).onclick = ()=>{ switchTab(id); };
 });
@@ -1398,14 +1411,12 @@ function startPolling(){
   if(_isPollingActive) return;
   _isPollingActive = true;
 
-  // โพลหลัก: sync ทุก POLL_INTERVAL (แต่เฉพาะเมื่อเป็น Staff)
   setInterval(() => {
     if(isStaff){
       syncFromServer();
     }
   }, POLL_INTERVAL);
 
-  // โพลแจ้งเตือนเสียง: เช็คออเดอร์ใหม่ (เฉพาะ Staff)
   let lastPendingCount = 0;
   setInterval(() => {
     if(!isStaff) return;
@@ -1418,7 +1429,7 @@ function startPolling(){
     }
     lastPendingCount = count;
     updateKitchenBadge();
-    renderCustomerProgress(); // อัปเดตสถานะลูกค้าตลอด
+    renderCustomerProgress();
   }, POLL_INTERVAL);
 }
 
@@ -1433,10 +1444,8 @@ function init(){
   $('orderTableNum').textContent = TABLE_NUMBER;
   $('historyTableNum').textContent = TABLE_NUMBER;
 
-  // โหลด state จาก localStorage
   loadState();
 
-  // เรนเดอร์ UI ทันที (ใช้ hardcoded menu)
   renderCats();
   renderMenu();
   renderCartBar();
@@ -1444,20 +1453,16 @@ function init(){
   renderAdmin();
   updateKitchenBadge();
 
-  // ตรวจสอบสิทธิ์ Staff
   applyAccessMode();
 
-  // ถ้าเป็น Staff และเปิดแท็บ Kitchen/Billing อยู่ ให้ render
   if(isStaff){
     if(activeTab === 'kitchen') renderKitchen();
     if(activeTab === 'billing') renderBilling();
     if(activeTab === 'history') renderHistory();
   }
 
-  // เริ่มโพล
   startPolling();
 
-  // Sync ครั้งแรกแบบเงียบ (ไม่รอ)
   if(apiConfigured()){
     setTimeout(() => syncFromServer(), 500);
   } else {
