@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ครัวไว — QR Order System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14181C;
+    --paper:#FAF7F2;
+    --paper2:#F1EBDF;
+    --accent:#FF7A33;
+    --accent2:#E8A33D;
+    --success:#6B8F71;
+    --danger:#C1440E;
+    --text-dark:#1F2421;
+    --text-light:#F7F3EA;
+    --line: rgba(255,255,255,0.09);
+    --line-dark: rgba(31,36,33,0.12);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Sarabun', sans-serif;
+    background:var(--bg);
+    color:var(--text-light);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{font-family:'Kanit', sans-serif;}
+
+  .app{max-width:1024px; margin:0 auto; padding:20px 16px 60px;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:18px; flex-wrap:wrap; gap:12px;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand .mark{
+    width:36px; height:36px; border-radius:9px;
+    background:linear-gradient(135deg, var(--accent), var(--accent2));
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+  }
+  .brand .name{font-family:'Kanit'; font-weight:700; font-size:19px;}
+  .brand .sub{font-size:11px; color:rgba(247,243,239,0.5); letter-spacing:1.5px; text-transform:uppercase;}
+
+  .switcher{
+    display:flex; background:rgba(255,255,255,0.06); border-radius:999px; padding:4px;
+    border:1px solid var(--line); overflow-x:auto;
+  }
+  .switcher button{
+    border:none; background:transparent; color:rgba(247,243,239,0.65);
+    font-family:'Kanit'; font-weight:600; font-size:12.5px;
+    padding:9px 15px; border-radius:999px; cursor:pointer; transition:all .25s ease; white-space:nowrap;
+  }
+  .switcher button.active{background:var(--accent); color:#1a0f08;}
+
+  .view{display:none; animation:fadeIn .35s ease;}
+  .view.active{display:block;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)}}
+
+  .table-badge{
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(255,122,51,0.12); border:1px solid rgba(255,122,51,0.35);
+    color:var(--accent2); padding:6px 14px; border-radius:999px; font-size:13px; font-weight:600;
+    margin-bottom:14px;
+  }
+  .table-badge::before{content:"📍"; font-size:13px;}
+
+  .search-row{margin-bottom:12px;}
+  .search-row input{
+    width:100%; padding:11px 14px; border-radius:12px; border:1px solid var(--line);
+    background:rgba(255,255,255,0.06); color:var(--text-light); font-family:'Sarabun'; font-size:13.5px;
+  }
+  .search-row input::placeholder{color:rgba(247,243,239,0.4);}
+
+  .cats{display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:16px;}
+  .cats button{
+    flex:0 0 auto; font-family:'Sarabun'; font-weight:600; font-size:13px;
+    background:transparent; color:rgba(247,243,239,0.55); border:1px solid var(--line);
+    padding:8px 15px; border-radius:999px; cursor:pointer; white-space:nowrap; transition:.2s;
+  }
+  .cats button.active{background:var(--text-light); color:var(--text-dark); border-color:var(--text-light);}
+
+  .menu-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media(min-width:640px){.menu-grid{grid-template-columns:1fr 1fr 1fr;}}
+  .item-card{
+    background:var(--paper); color:var(--text-dark); border-radius:16px; padding:14px;
+    display:flex; flex-direction:column; gap:8px; position:relative;
+  }
+  .item-card.sold-out{opacity:0.55;}
+  .sold-out-tag{
+    position:absolute; top:10px; right:10px; background:var(--danger); color:#fff;
+    font-family:'Kanit'; font-size:10.5px; font-weight:600; padding:3px 9px; border-radius:999px;
+  }
+  .item-emoji{font-size:28px; line-height:1;}
+  .item-name{font-family:'Kanit'; font-weight:600; font-size:14px; line-height:1.3;}
+  .item-desc{font-size:11px; color:rgba(31,36,33,0.55); line-height:1.4; min-height:28px;}
+  .item-bottom{display:flex; align-items:center; justify-content:space-between; margin-top:2px;}
+  .item-price{font-family:'Kanit'; font-weight:700; font-size:14.5px; color:var(--accent);}
+  .add-btn{
+    background:var(--accent); color:#fff; border:none; font-family:'Kanit'; font-weight:600;
+    font-size:12.5px; padding:7px 13px; border-radius:9px; cursor:pointer;
+  }
+  .add-btn:disabled{background:var(--line-dark); color:rgba(31,36,33,0.4); cursor:not-allowed;}
+  .cart-line-count{
+    position:absolute; top:-7px; right:-7px; background:var(--text-dark); color:#fff;
+    font-size:10.5px; font-family:'Kanit'; font-weight:700; width:18px; height:18px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .add-wrap{position:relative; display:inline-block;}
+
+  .cart-bar{
+    position:sticky; bottom:16px; margin-top:22px;
+    background:var(--text-dark); border-radius:16px; padding:14px 18px;
+    display:flex; align-items:center; justify-content:space-between;
+    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+    transform:translateY(120%); opacity:0; transition:all .3s ease; pointer-events:none;
+  }
+  .cart-bar.show{transform:translateY(0); opacity:1; pointer-events:auto;}
+  .cart-bar .info{font-size:13px; color:rgba(247,243,239,0.6);}
+  .cart-bar .total{font-family:'Kanit'; font-weight:700; font-size:17px; color:var(--text-light);}
+  .cart-bar button{
+    font-family:'Kanit'; font-weight:600; background:var(--accent); color:#1a0f08;
+    border:none; padding:11px 20px; border-radius:11px; cursor:pointer; font-size:14px;
+  }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none;
+    align-items:flex-end; justify-content:center; z-index:50;
+  }
+  .overlay.show{display:flex;}
+  .sheet{
+    background:var(--paper); color:var(--text-dark); width:100%; max-width:480px;
+    border-radius:22px 22px 0 0; padding:22px; animation:slideUp .3s ease;
+    max-height:85vh; overflow-y:auto;
+  }
+  @keyframes slideUp{from{transform:translateY(30px); opacity:0} to{transform:translateY(0); opacity:1}}
+  .sheet h2{font-size:18px; margin-bottom:4px;}
+  .sheet .sub{font-size:12.5px; color:rgba(31,36,33,0.5); margin-bottom:16px;}
+
+  .qty-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+  .qty-row .label{font-family:'Kanit'; font-weight:600; font-size:14px;}
+  .qty-ctrl{display:flex; align-items:center; gap:12px;}
+  .qty-ctrl button{
+    width:32px; height:32px; border-radius:9px; border:1px solid var(--line-dark);
+    background:var(--paper2); font-size:16px; font-weight:700; cursor:pointer; color:var(--text-dark);
+  }
+  .qty-ctrl .n{font-family:'Kanit'; font-weight:700; font-size:15px; min-width:16px; text-align:center;}
+
+  .chip-label{font-family:'Kanit'; font-weight:600; font-size:13px; margin-bottom:8px;}
+  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px;}
+  .chip{
+    font-size:12.5px; padding:7px 13px; border-radius:999px; border:1px solid var(--line-dark);
+    background:var(--paper2); color:var(--text-dark); cursor:pointer; transition:.15s;
+  }
+  .chip.selected{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .note-input{
+    width:100%; border:1px solid var(--line-dark); border-radius:10px; padding:10px 12px;
+    font-family:'Sarabun'; font-size:13.5px; resize:none; margin-bottom:16px; background:var(--paper2);
+  }
+  .modal-add-btn{
+    width:100%; padding:13px; border-radius:12px; border:none; background:var(--accent);
+    color:#fff; font-family:'Kanit'; font-weight:600; font-size:14.5px; cursor:pointer;
+  }
+  .modal-cancel{
+    width:100%; padding:10px; text-align:center; font-size:13px; color:rgba(31,36,33,0.5);
+    background:none; border:none; cursor:pointer; margin-top:8px;
+  }
+
+  .order-row{display:flex; justify-content:space-between; align-items:flex-start; padding:10px 0; border-bottom:1px dashed var(--line-dark); font-size:14px; gap:10px;}
+  .order-row .name{font-weight:500;}
+  .order-row .qty-badge{color:rgba(31,36,33,0.5); font-size:12px;}
+  .order-row .note-tag{font-size:11.5px; color:var(--accent); margin-top:2px;}
+  .order-row .rm{background:none; border:none; color:rgba(31,36,33,0.35); cursor:pointer; font-size:16px; padding:0 4px;}
+  .order-total{display:flex; justify-content:space-between; padding:16px 0 4px; font-family:'Kanit'; font-weight:700; font-size:17px;}
+  .sheet-actions{display:flex; gap:10px; margin-top:16px;}
+  .sheet-actions button{flex:1; padding:13px; border-radius:12px; font-family:'Kanit'; font-weight:600; font-size:14px; border:none; cursor:pointer;}
+  .btn-ghost{background:var(--paper2); color:var(--text-dark);}
+  .btn-send{background:var(--accent); color:#1a0f08;}
+
+  .toast{
+    position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-30px);
+    background:var(--success); color:#fff; padding:12px 22px; border-radius:12px;
+    font-family:'Kanit'; font-weight:600; font-size:14px; opacity:0; transition:all .3s ease; z-index:100;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .empty-state{text-align:center; padding:60px 20px; color:rgba(247,243,239,0.4);}
+  .empty-state .big{font-size:38px; margin-bottom:10px;}
+
+  /* KITCHEN LARGE CARDS */
+  .kitchen-group{
+    background:var(--paper); color:var(--text-dark); border-radius:16px; padding:16px;
+    margin-bottom:18px; border-left:6px solid var(--accent);
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  }
+  .kitchen-group .group-header{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;
+    font-family:'Kanit'; font-size:16px; font-weight:700;
+  }
+  .kitchen-group .group-header .order-id{
+    font-size:13px; color:rgba(31,36,33,0.5); font-weight:400;
+  }
+  .kitchen-item-card{
+    background:var(--paper2); border-radius:12px; padding:14px 16px; margin-bottom:10px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    border:1px solid var(--line-dark); transition:0.2s;
+  }
+  .kitchen-item-card:last-child{margin-bottom:0;}
+  .kitchen-item-card .left{
+    display:flex; align-items:center; gap:12px; flex:1; flex-wrap:wrap;
+  }
+  .kitchen-item-card .left .emoji{font-size:28px;}
+  .kitchen-item-card .left .name{font-family:'Kanit'; font-weight:600; font-size:16px;}
+  .kitchen-item-card .left .qty{font-family:'Kanit'; font-weight:700; color:var(--accent); font-size:15px;}
+  .kitchen-item-card .left .note{font-size:13px; color:var(--danger);}
+  .kitchen-item-card .done-btn{
+    background:var(--success); color:#fff; border:none; padding:10px 20px; border-radius:10px;
+    font-family:'Kanit'; font-weight:700; font-size:16px; cursor:pointer; min-width:100px; text-align:center;
+    transition:0.2s;
+  }
+  .kitchen-item-card .done-btn:hover{transform:scale(1.02); box-shadow:0 4px 12px rgba(107,143,113,0.3);}
+  .kitchen-item-card .done-btn:disabled{background:var(--line-dark); color:rgba(31,36,33,0.3); cursor:not-allowed; transform:none;}
+
+  /* BILLING READY CARDS */
+  .bill-card-ready{
+    background:#FFF3E0; border-left:8px solid var(--accent); border-radius:16px;
+    padding:18px 20px; margin-bottom:16px; box-shadow:0 6px 20px rgba(255,122,51,0.15);
+    color:var(--text-dark);
+  }
+  .bill-card-ready .status-badge{
+    display:inline-block; background:var(--accent); color:#fff; font-family:'Kanit';
+    font-weight:700; font-size:14px; padding:4px 16px; border-radius:999px; margin-bottom:10px;
+  }
+  .bill-card-ready .bill-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .bill-card-ready .bill-head .t{font-family:'Kanit'; font-weight:700; font-size:18px;}
+  .bill-card-ready .bill-item{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--line-dark);}
+  .bill-card-ready .bill-total{font-family:'Kanit'; font-weight:700; font-size:18px; padding:12px 0 6px; border-top:2px solid var(--line-dark); margin-top:6px;}
+  .bill-card-ready .pay-btn{
+    width:100%; padding:14px; border-radius:12px; border:none; background:var(--accent);
+    color:#fff; font-family:'Kanit'; font-weight:700; font-size:18px; cursor:pointer; margin-top:12px; transition:0.2s;
+  }
+  .bill-card-ready .pay-btn:hover{transform:scale(1.01); box-shadow:0 4px 16px rgba(255,122,51,0.3);}
+
+  /* CONFIRM POPUP */
+  .confirm-popup .sheet{max-width:440px;}
+  .confirm-popup .popup-total{font-family:'Kanit'; font-size:22px; font-weight:700; color:var(--accent); text-align:center; margin:12px 0;}
+  .confirm-popup .popup-actions{display:flex; gap:12px; margin-top:16px;}
+  .confirm-popup .popup-actions button{flex:1; padding:14px; border-radius:12px; border:none; font-family:'Kanit'; font-weight:700; font-size:16px; cursor:pointer;}
+  .confirm-popup .popup-actions .confirm-yes{background:var(--accent); color:#fff;}
+  .confirm-popup .popup-actions .confirm-no{background:var(--paper2); color:var(--text-dark);}
+
+  /* ADMIN */
+  .admin-row{
+    display:flex; align-items:center; justify-content:space-between; background:var(--paper);
+    color:var(--text-dark); padding:11px 14px; border-radius:12px; margin-bottom:8px;
+  }
+  .admin-row .info{display:flex; align-items:center; gap:10px; flex:1; min-width:0;}
+  .admin-row .em{font-size:20px; flex-shrink:0;}
+  .admin-row .nm{font-family:'Kanit'; font-weight:600; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .admin-row .pr{font-size:11.5px; color:rgba(31,36,33,0.5);}
+  .admin-row .actions{display:flex; gap:6px; flex-shrink:0;}
+  .admin-row .actions button{
+    background:transparent; border:1px solid var(--line-dark); border-radius:6px; padding:4px 8px; font-size:12px; cursor:pointer;
+  }
+  .admin-row .actions .edit-btn{background:var(--paper2);}
+  .admin-row .actions .toggle-btn{
+    width:44px; height:25px; border-radius:999px; background:var(--success); position:relative;
+    cursor:pointer; transition:.2s; border:none;
+  }
+  .admin-row .actions .toggle-btn.off{background:#C9C2B4;}
+  .admin-row .actions .toggle-btn .dot{
+    width:19px; height:19px; border-radius:50%; background:#fff; position:absolute; top:3px; left:22px;
+    transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  .admin-row .actions .toggle-btn.off .dot{left:3px;}
+
+  .admin-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;}
+  .admin-header .add-btn{
+    background:var(--accent); color:#1a0f08; border:none; padding:8px 18px; border-radius:999px; font-family:'Kanit'; font-weight:600; cursor:pointer;
+  }
+
+  .item-photo{width:100%; height:76px; object-fit:cover; border-radius:11px; display:block;}
+
+  .tab-badge{
+    display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px;
+    background:var(--danger); color:#fff; font-size:10px; font-weight:700; border-radius:999px;
+    padding:0 4px; margin-left:5px; vertical-align:middle;
+  }
+
+  /* SUMMARY / HISTORY */
+  .summary-card{
+    background:var(--paper); color:var(--text-dark); border-radius:16px; padding:18px; margin-bottom:14px;
+  }
+  .bill-card{
+    background:var(--paper); color:var(--text-dark); border-radius:16px; padding:18px; margin-bottom:14px;
+    border-left:4px solid var(--accent2);
+  }
+  .bill-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .bill-head .t{font-family:'Kanit'; font-weight:700; font-size:16px;}
+  .bill-head .cnt{font-size:12px; color:rgba(31,36,33,0.5);}
+  .bill-item{display:flex; justify-content:space-between; font-size:13.5px; padding:5px 0; border-bottom:1px dashed var(--line-dark);}
+  .bill-total{display:flex; justify-content:space-between; font-family:'Kanit'; font-weight:700; font-size:16px; padding:12px 0 4px;}
+
+  .history-order-item{padding:8px 0; border-bottom:1px dashed var(--line-dark);}
+  .history-order-item .hdr{display:flex; justify-content:space-between; font-weight:600;}
+  .history-order-item .sub{font-size:12px; color:rgba(31,36,33,0.5);}
+
+  @media(max-width:420px){
+    .app{padding:14px 12px 50px;}
+    .brand .mark{width:32px; height:32px; font-size:16px;}
+    .brand .name{font-size:17px;}
+    .switcher{padding:3px;}
+    .switcher button{padding:7px 11px; font-size:11.5px;}
+    .menu-grid{gap:9px;}
+    .item-card{padding:11px; gap:6px;}
+    .item-emoji{font-size:24px;}
+    .item-photo{height:64px;}
+    .item-name{font-size:13px;}
+    .item-desc{font-size:10.5px; min-height:24px;}
+    .cats button{padding:7px 12px; font-size:12px;}
+    .cart-bar{padding:12px 14px; bottom:10px;}
+    .sheet{padding:18px;}
+    .kitchen-item-card{flex-wrap:wrap;}
+    .kitchen-item-card .done-btn{width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">🍜</div>
+      <div>
+        <div class="name">ครัวไว</div>
+        <div class="sub">QR Order Demo</div>
+      </div>
+    </div>
+    <div class="switcher">
+      <button id="tabCustomer" class="active">ลูกค้า</button>
+      <button id="tabKitchen">ครัว<span class="tab-badge" id="kitchenBadge" style="display:none;">0</span></button>
+      <button id="tabBilling">รอคิดเงิน</button>
+      <button id="tabHistory">สรุปยอด</button>
+      <button id="tabAdmin">หลังบ้าน</button>
+    </div>
+  </div>
+
+  <!-- CUSTOMER VIEW -->
+  <div id="viewCustomer" class="view active">
+    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+      <div class="table-badge" style="margin-bottom:0;">โต๊ะ 5 · สแกนแล้วเชื่อมต่อสำเร็จ</div>
+      <button id="customerHistoryBtn" style="background:rgba(255,255,255,0.06); border:1px solid var(--line); color:var(--text-light); padding:6px 14px; border-radius:999px; font-family:'Kanit'; font-weight:600; font-size:12.5px; cursor:pointer;">📋 ประวัติการสั่ง</button>
+    </div>
+    <div class="search-row"><input id="searchBox" placeholder="ค้นหาเมนู เช่น กุ้ง, ผัด, ต้ม..."></div>
+    <div class="cats" id="cats"></div>
+    <div class="menu-grid" id="menuGrid"></div>
+  </div>
+
+  <div class="cart-bar" id="cartBar">
+    <div>
+      <div class="info" id="cartInfo">0 รายการ</div>
+      <div class="total" id="cartTotal">฿0</div>
+    </div>
+    <button id="openOrderBtn">ดูออเดอร์</button>
+  </div>
+
+  <!-- KITCHEN VIEW -->
+  <div id="viewKitchen" class="view"><div id="kitchenContent"></div></div>
+
+  <!-- BILLING VIEW -->
+  <div id="viewBilling" class="view"><div id="billingContent"></div></div>
+
+  <!-- HISTORY / SUMMARY -->
+  <div id="viewHistory" class="view"><div id="historyContent"></div></div>
+
+  <!-- ADMIN VIEW -->
+  <div id="viewAdmin" class="view">
+    <div class="admin-header">
+      <div class="search-row" style="margin:0; flex:1; max-width:300px;"><input id="adminSearch" placeholder="ค้นหาเมนู..."></div>
+      <button class="add-btn" id="addMenuItemBtn">➕ เพิ่มเมนู</button>
+    </div>
+    <div id="adminContent"></div>
+  </div>
+</div>
+
+<!-- ITEM ADD MODAL (customer) -->
+<div class="overlay" id="itemOverlay">
+  <div class="sheet">
+    <h2 id="itemModalName"></h2>
+    <div class="sub" id="itemModalPrice"></div>
+    <div class="qty-row">
+      <div class="label">จำนวน</div>
+      <div class="qty-ctrl">
+        <button id="itemQtyMinus">−</button>
+        <div class="n" id="itemQtyNum">1</div>
+        <button id="itemQtyPlus">+</button>
+      </div>
+    </div>
+    <div class="chip-label">ระบุความต้องการ (เลือกได้หลายอย่าง)</div>
+    <div class="chips" id="itemChips"></div>
+    <textarea class="note-input" id="itemNoteText" rows="2" placeholder="ระบุเพิ่มเติม เช่น ไม่ใส่ต้นหอม..."></textarea>
+    <button class="modal-add-btn" id="itemModalAddBtn">เพิ่มลงตะกร้า</button>
+    <button class="modal-cancel" id="itemModalCancel">ยกเลิก</button>
+  </div>
+</div>
+
+<!-- ORDER CONFIRM SHEET -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h2>ยืนยันรายการสั่ง — โต๊ะ 5</h2>
+    <div id="orderRows"></div>
+    <div class="order-total"><span>รวมทั้งหมด</span><span id="orderTotal">฿0</span></div>
+    <div class="sheet-actions">
+      <button class="btn-ghost" id="closeSheet">แก้ไขรายการ</button>
+      <button class="btn-send" id="sendOrderBtn">ส่งออเดอร์เข้าครัว</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMER HISTORY SHEET (read only) -->
+<div class="overlay" id="customerHistoryOverlay">
+  <div class="sheet">
+    <h2>📋 ประวัติการสั่ง — โต๊ะ 5</h2>
+    <div id="customerHistoryList" style="margin-top:12px;"></div>
+    <button class="modal-cancel" id="customerHistoryClose" style="margin-top:16px;">ปิด</button>
+  </div>
+</div>
+
+<!-- ADMIN MENU EDIT/ADD MODAL -->
+<div class="overlay" id="adminMenuModal">
+  <div class="sheet">
+    <h2 id="adminModalTitle">เพิ่มเมนูใหม่</h2>
+    <div style="margin:12px 0;">
+      <label style="display:block; font-weight:600; font-size:13px;">ชื่อเมนู</label>
+      <input id="adminMenuName" type="text" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--line-dark); background:var(--paper2);">
+    </div>
+    <div style="margin:12px 0;">
+      <label style="display:block; font-weight:600; font-size:13px;">หมวดหมู่</label>
+      <select id="adminMenuCat" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--line-dark); background:var(--paper2);"></select>
+    </div>
+    <div style="margin:12px 0;">
+      <label style="display:block; font-weight:600; font-size:13px;">ราคา (บาท)</label>
+      <input id="adminMenuPrice" type="number" step="1" min="0" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--line-dark); background:var(--paper2);">
+    </div>
+    <div style="margin:12px 0;">
+      <label style="display:block; font-weight:600; font-size:13px;">อีโมจิ</label>
+      <input id="adminMenuEmoji" type="text" maxlength="2" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--line-dark); background:var(--paper2);" placeholder="🍜">
+    </div>
+    <div style="margin:12px 0;">
+      <label style="display:block; font-weight:600; font-size:13px;">คำอธิบาย</label>
+      <input id="adminMenuDesc" type="text" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--line-dark); background:var(--paper2);" placeholder="เช่น เส้นนุ่มหอมมันกุ้ง">
+    </div>
+    <div style="margin:12px 0;">
+      <label style="display:block; font-weight:600; font-size:13px;">ลิงก์รูปภาพ (URL)</label>
+      <input id="adminMenuImage" type="text" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--line-dark); background:var(--paper2);" placeholder="https://...">
+    </div>
+    <button class="modal-add-btn" id="adminMenuSaveBtn">บันทึก</button>
+    <button class="modal-cancel" id="adminMenuCancelBtn">ยกเลิก</button>
+  </div>
+</div>
+
+<!-- PAYMENT CONFIRM POPUP -->
+<div class="overlay confirm-popup" id="paymentConfirmOverlay">
+  <div class="sheet">
+    <h2>💳 ยืนยันการชำระเงิน</h2>
+    <div style="margin:12px 0;">
+      <p style="font-size:16px; font-weight:600;" id="confirmHeader">โต๊ะ 5 · ออเดอร์ #1</p>
+      <div id="confirmItems" style="margin:10px 0;"></div>
+      <div class="popup-total" id="confirmTotal">฿0</div>
+    </div>
+    <div class="popup-actions">
+      <button class="confirm-no" id="confirmNo">ยกเลิก</button>
+      <button class="confirm-yes" id="confirmYes">✅ ยืนยันการชำระเงิน</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">ส่งออเดอร์เรียบร้อย ✓</div>
+
+<script>
+// ============================================================
+// DATA & STATE
+// ============================================================
+const CATS = ["ทั้งหมด","จานหลัก","กับข้าว","ยำ","ทอด/ปิ้งย่าง","ต้ม/ซุป","เครื่องดrink","ของหวาน"];
+const NOTE_CHIPS = ["ไม่เผ็ด","เผ็ดน้อย","เผ็ดมาก","ไม่ใส่ผัก","ไม่ใส่ถั่ว","ไม่ใส่ผงชูรส","ไม่ใส่มะนาว"];
+
+function m(id,cat,name,price,emoji,desc,image){ return {id,cat,name,price,emoji,desc,available:true,image:image||null}; }
+
+let MENU = [
+  m(1,"จานหลัก","ผัดไทยกุ้งสด",120,"🍜","เส้นนุ่มหอมมันกุ้ง"),
+  m(2,"จานหลัก","ข้าวผัดปูก้อน",150,"🍚","เนื้อปูแน่นๆ หอมกระเทียม"),
+  m(3,"จานหลัก","ข้าวผัดกะเพราหมูสับ",70,"🍚","รสจัดจ้าน ใส่ไข่ดาว"),
+  m(4,"จานหลัก","ข้าวหน้าเป็ดย่าง",95,"🦆","เป็ดนุ่ม ราดน้ำเกรวี่"),
+  m(5,"จานหลัก","ข้าวมันไก่",65,"🍗","ไก่ต้มนุ่ม น้ำจิ้มสูตรเด็ด"),
+  m(6,"จานหลัก","ผัดซีอิ๊วหมู",70,"🍝","เส้นใหญ่ผัดไฟแรง"),
+  m(7,"จานหลัก","ราดหน้าหมู",75,"🍲","ซอสข้นกลมกล่อม"),
+  m(8,"จานหลัก","ข้าวคลุกกะปิ",85,"🍚","จัดเต็มเครื่องเคียง"),
+  m(9,"กับข้าว","ไก่ทอดหาดใหญ่",110,"🍗","กรอบนอกนุ่มใน"),
+  m(10,"กับข้าว","ไข่เจียวหมูสับ",60,"🍳","ฟูนุ่ม จานโปรดเด็กๆ"),
+  m(11,"กับข้าว","หมูทอดกระเทียม",95,"🥩","หอมกระเทียมเจียว"),
+  m(12,"กับข้าว","ปลาทอดน้ำปลา",130,"🐟","ปลากะพงทอดกรอบ"),
+  m(13,"กับข้าว","ผัดผักบุ้งไฟแดง",60,"🥬","ผัดไฟแรงกรอบอร่อย"),
+  m(14,"กับข้าว","คะน้าหมูกรอบ",85,"🥓","หมูกรอบชิ้นโต"),
+  m(15,"กับข้าว","เต้าหู้ทรงเครื่อง",70,"🍲","ราดซอสหอยนางรม"),
+  m(16,"กับข้าว","หมูสามชั้นทอด",90,"🥓","กรอบมัน เค็มกำลังดี"),
+  m(17,"ยำ","ยำวุ้นเส้น",90,"🥗","รวมมิตรทะเล"),
+  m(18,"ยำ","ยำทะเล",150,"🦐","กุ้ง ปลาหมึก หอย"),
+  m(19,"ยำ","ยำมะม่วง",70,"🥭","เปรี้ยวหวานกรอบ"),
+  m(20,"ยำ","ลาบหมู",85,"🌶️","รสแซ่บอีสานแท้"),
+  m(21,"ยำ","น้ำตกเนื้อ",120,"🥩","เนื้อย่างสไลซ์คลุกน้ำจิ้ม"),
+  m(22,"ยำ","ยำปลาดุกฟู",110,"🐟","ฟูกรอบ เผ็ดจี๊ด"),
+  m(23,"ทอด/ปิ้งย่าง","ปีกไก่ทอด",90,"🍗","หมักสูตรเด็ด"),
+  m(24,"ทอด/ปิ้งย่าง","ปอเปี๊ยะทอด",60,"🥟","กรอบทุกคำ"),
+  m(25,"ทอด/ปิ้งย่าง","กุ้งชุบแป้งทอด",140,"🍤","กุ้งตัวโต แป้งกรอบ"),
+  m(26,"ทอด/ปิ้งย่าง","หมูปิ้ง",10,"🍢","ต่อไม้ หวานมัน"),
+  m(27,"ทอด/ปิ้งย่าง","ไก่ย่าง",160,"🍗","ย่างเตาถ่านหอมกรุ่น"),
+  m(28,"ทอด/ปิ้งย่าง","ปลาหมึกย่าง",130,"🦑","ราดน้ำจิ้มซีฟู้ด"),
+  m(29,"ทอด/ปิ้งย่าง","เนื้อย่างเกาหลี",170,"🥩","หมักซอสสไตล์เกาหลี"),
+  m(30,"ทอด/ปิ้งย่าง","ข้าวเกรียบกุ้ง",50,"🍘","ทานเล่นเรียกน้ำย่อย"),
+  m(31,"ต้ม/ซุป","ต้มยำกุ้งน้ำข้น",180,"🍲","รสจัดจ้าน กุ้งแม่น้ำตัวโต"),
+  m(32,"ต้ม/ซุป","ต้มข่าไก่",130,"🥥","กะทิเข้มข้น หอมข่า"),
+  m(33,"ต้ม/ซุป","แกงเขียวหวานไก่",130,"🍛","เข้มข้น เผ็ดกำลังดี"),
+  m(34,"ต้ม/ซุป","แกงส้มผักรวม",90,"🥘","เปรี้ยวเผ็ดจัดจ้าน"),
+  m(35,"ต้ม/ซุป","ต้มจืดเต้าหู้หมูสับ",70,"🍜","รสอ่อนละมุน"),
+  m(36,"ต้ม/ซุป","แกงมัสมั่นไก่",140,"🍛","หอมเครื่องเทศเข้มข้น"),
+  m(37,"เครื่องดrink","ชาไทยเย็น",45,"🧋","หวานมันแบบต้นตำรับ"),
+  m(38,"เครื่องดrink","กาแฟเย็น",50,"☕","เข้มหอมกาแฟคั่วกลาง"),
+  m(39,"เครื่องดrink","น้ำมะนาวโซดา",40,"🍋","สดชื่นซาบซ่า"),
+  m(40,"เครื่องดrink","น้ำส้มคั้น",50,"🍊","คั้นสดใหม่ทุกแก้ว"),
+  m(41,"เครื่องดrink","โซดามะนาว",35,"🥤","เปรี้ยวซ่าสดชื่น"),
+  m(42,"เครื่องดrink","น้ำอัดลม",25,"🥤","เลือกได้ตามชอบ"),
+  m(43,"เครื่องดrink","น้ำเปล่า",15,"💧","ขวดเย็นเสิร์ฟทันที"),
+  m(44,"เครื่องดrink","นมเย็น",40,"🥛","หวานมันละมุนลิ้น"),
+  m(45,"ของหวาน","ข้าวเหนียวมะม่วง",80,"🥭","มะม่วงสุกหวานฉ่ำ"),
+  m(46,"ของหวาน","บัวลอย",50,"🍮","ไข่หวานกะทิสด"),
+  m(47,"ของหวาน","ไอศกรีมกะทิ",45,"🍨","หอมมันแบบไทยแท้"),
+  m(48,"ของหวาน","ทับทิมกรอบ",55,"🍧","กรอบเด้ง หวานเย็นฉ่ำ"),
+  m(49,"ของหวาน","กล้วยบวชชี",45,"🍌","กะทิหอมหวานกำลังดี"),
+  m(50,"ของหวาน","วุ้นมะพร้าว",40,"🥥","เย็นชื่นใจ หวานอ่อนๆ"),
+];
+
+let cart = [];
+let lineCounter = 1;
+let activeCat = "ทั้งหมด";
+let searchText = "";
+let adminSearchText = "";
+let orders = [];
+let orderCounter = 1;
+let unseenOrders = 0;
+let editingMenuId = null;
+
+let pendingItem = null;
+let pendingQty = 1;
+let pendingChips = new Set();
+
+function playBeep(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 660].forEach((freq, i)=>{
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, ctx.currentTime + i*0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.15 + 0.25);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i*0.15);
+      osc.stop(ctx.currentTime + i*0.15 + 0.25);
+    });
+  }catch(e){}
+}
+
+function updateKitchenBadge(){
+  const badge = document.getElementById('kitchenBadge');
+  const pending = orders.flatMap(o=>o.items.filter(i=>i.status==='pending'));
+  unseenOrders = pending.length;
+  if(unseenOrders > 0){ badge.style.display='inline-flex'; badge.textContent = unseenOrders; }
+  else { badge.style.display='none'; }
+}
+
+const $ = id => document.getElementById(id);
+
+// ============================================================
+// PERSISTENCE
+// ============================================================
+function saveState(){
+  try{
+    localStorage.setItem('kitchen_wise_state', JSON.stringify({ menu:MENU, orders, orderCounter, lineCounter }));
+  }catch(e){}
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem('kitchen_wise_state');
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    if(data.menu) MENU.splice(0, MENU.length, ...data.menu);
+    if(data.orders) orders = data.orders;
+    if(data.orderCounter) orderCounter = data.orderCounter;
+    if(data.lineCounter) lineCounter = data.lineCounter;
+  }catch(e){}
+}
+
+// ============================================================
+// BACKEND SYNC (Google Sheets ผ่าน Apps Script)
+// ============================================================
+// วาง Web app URL ที่ได้จากการ Deploy Apps Script ตรงนี้ (ดูคู่มือติดตั้ง.md ส่วนที่ 1)
+const API_URL = "https://script.google.com/macros/s/AKfycbxeEj4Y7lEIIpHSrasv3NcK7S6-Z7uWdl0TWyyqVjQRSIqXjBB-leGcPw9clqy7LmZt/exec";
+
+function apiConfigured(){ return API_URL && API_URL.indexOf('PASTE_YOUR') === -1; }
+
+async function apiGet(action){
+  if(!apiConfigured()) return null;
+  try{
+    const res = await fetch(API_URL + '?action=' + encodeURIComponent(action));
+    return await res.json();
+  }catch(e){ console.warn('เชื่อมต่อ Google Sheets ไม่สำเร็จ (apiGet):', e); return null; }
+}
+
+async function apiPost(payload){
+  if(!apiConfigured()) return null;
+  try{
+    // ใช้ text/plain เพื่อเลี่ยง CORS preflight ที่ Apps Script Web App ไม่รองรับ
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  }catch(e){ console.warn('เชื่อมต่อ Google Sheets ไม่สำเร็จ (apiPost):', e); return null; }
+}
+
+let _syncing = false;
+async function syncFromServer(){
+  if(!apiConfigured() || _syncing) return;
+  _syncing = true;
+  const data = await apiGet('getData');
+  _syncing = false;
+  if(!data || !data.ok) return;
+  MENU.splice(0, MENU.length, ...data.menu);
+  orders = data.orders;
+  const maxId = orders.reduce((mx,o)=>Math.max(mx,o.id||0), 0);
+  orderCounter = Math.max(orderCounter, maxId+1);
+  saveState();
+  renderMenu(); renderCartBar(); renderKitchen(); renderBilling(); renderHistory(); renderAdmin(); updateKitchenBadge();
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function filteredMenu(){
+  const q = searchText.trim().toLowerCase();
+  return MENU.filter(x =>
+    (activeCat==="ทั้งหมด" || x.cat===activeCat) &&
+    (q==="" || x.name.toLowerCase().includes(q))
+  );
+}
+function cartCount(){ return cart.reduce((s,l)=>s+l.qty,0); }
+function cartTotalPrice(){ return cart.reduce((s,l)=>s+l.qty*l.price,0); }
+function cartCountForMenu(id){ return cart.filter(l=>l.menuId===id).reduce((s,l)=>s+l.qty,0); }
+function elapsedLabel(ts){
+  const min = Math.floor((Date.now()-ts)/60000);
+  return min<1 ? "เพิ่งสั่ง" : min+" นาที";
+}
+function formatDate(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString('th-TH') + ' ' + d.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+}
+function isToday(ts){
+  const today = new Date();
+  const d = new Date(ts);
+  return d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate();
+}
+function isThisMonth(ts){
+  const today = new Date();
+  const d = new Date(ts);
+  return d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth();
+}
+
+// ============================================================
+// RENDER: CATEGORIES
+// ============================================================
+function renderCats(){
+  const container = $('cats');
+  container.innerHTML = CATS.map(c => `<button data-cat="${c}" class="${c===activeCat?'active':''}">${c}</button>`).join('');
+  container.querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{ activeCat = b.dataset.cat; renderCats(); renderMenu(); };
+  });
+}
+
+// ============================================================
+// RENDER: MENU (Customer)
+// ============================================================
+function renderMenu(){
+  const items = filteredMenu();
+  const grid = $('menuGrid');
+  if(items.length===0){
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="big">🔍</div>ไม่พบเมนูที่ค้นหา</div>';
+    return;
+  }
+  grid.innerHTML = items.map(x => {
+    const soldOut = !x.available;
+    const inCart = cartCountForMenu(x.id);
+    return `
+    <div class="item-card ${soldOut?'sold-out':''}">
+      ${soldOut ? '<div class="sold-out-tag">หมดแล้ว</div>' : ''}
+      ${x.image ? `<img class="item-photo" src="${x.image}" alt="${x.name}">` : `<div class="item-emoji">${x.emoji}</div>`}
+      <div class="item-name">${x.name}</div>
+      <div class="item-desc">${x.desc}</div>
+      <div class="item-bottom">
+        <div class="item-price">฿${x.price}</div>
+        <div class="add-wrap">
+          ${inCart>0 ? `<div class="cart-line-count">${inCart}</div>` : ''}
+          <button class="add-btn" data-open="${x.id}" ${soldOut?'disabled':''}>${soldOut?'หมด':'+ ใส่'}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('[data-open]').forEach(b=>{
+    b.onclick = ()=> openItemModal(+b.dataset.open);
+  });
+}
+
+// ============================================================
+// MODAL: Customer add item
+// ============================================================
+function openItemModal(menuId){
+  pendingItem = MENU.find(x=>x.id===menuId);
+  pendingQty = 1;
+  pendingChips = new Set();
+  $('itemModalName').textContent = pendingItem.emoji + "  " + pendingItem.name;
+  $('itemModalPrice').textContent = "฿" + pendingItem.price + " ต่อจาน";
+  $('itemQtyNum').textContent = pendingQty;
+  $('itemNoteText').value = "";
+  renderChips();
+  $('itemOverlay').classList.add('show');
+}
+function renderChips(){
+  $('itemChips').innerHTML = NOTE_CHIPS.map(c=>`<div class="chip ${pendingChips.has(c)?'selected':''}" data-chip="${c}">${c}</div>`).join('');
+  $('itemChips').querySelectorAll('[data-chip]').forEach(el=>{
+    el.onclick = ()=>{
+      const c = el.dataset.chip;
+      pendingChips.has(c) ? pendingChips.delete(c) : pendingChips.add(c);
+      renderChips();
+    };
+  });
+}
+$('itemQtyMinus').onclick = ()=>{ pendingQty=Math.max(1,pendingQty-1); $('itemQtyNum').textContent=pendingQty; };
+$('itemQtyPlus').onclick = ()=>{ pendingQty=Math.min(20,pendingQty+1); $('itemQtyNum').textContent=pendingQty; };
+$('itemModalCancel').onclick = ()=>{ $('itemOverlay').classList.remove('show'); };
+$('itemModalAddBtn').onclick = ()=>{
+  const freeText = $('itemNoteText').value.trim();
+  const noteParts = [...pendingChips];
+  if(freeText) noteParts.push(freeText);
+  cart.push({
+    lineId: lineCounter++,
+    menuId: pendingItem.id,
+    name: pendingItem.name,
+    price: pendingItem.price,
+    qty: pendingQty,
+    note: noteParts.join(", ")
+  });
+  $('itemOverlay').classList.remove('show');
+  saveState();
+  renderMenu(); renderCartBar();
+};
+
+// ============================================================
+// CART BAR
+// ============================================================
+function renderCartBar(){
+  const count = cartCount();
+  $('cartBar').classList.toggle('show', count>0);
+  $('cartInfo').textContent = count + " รายการ";
+  $('cartTotal').textContent = "฿" + cartTotalPrice();
+}
+
+// ============================================================
+// ORDER SHEET (confirm)
+// ============================================================
+function renderOrderSheet(){
+  const rows = $('orderRows');
+  if(cart.length===0){
+    rows.innerHTML = '<div style="padding:20px 0;color:rgba(31,36,33,0.4);text-align:center;">ยังไม่มีรายการ</div>';
+  } else {
+    rows.innerHTML = cart.map(l=>`
+      <div class="order-row">
+        <div>
+          <div class="name">${l.name} <span class="qty-badge">x${l.qty}</span></div>
+          ${l.note ? `<div class="note-tag">📝 ${l.note}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div>฿${l.price*l.qty}</div>
+          <button class="rm" data-rm="${l.lineId}">✕</button>
+        </div>
+      </div>
+    `).join('');
+    rows.querySelectorAll('[data-rm]').forEach(b=>{
+      b.onclick = ()=>{
+        cart = cart.filter(l=>l.lineId !== +b.dataset.rm);
+        renderOrderSheet(); renderMenu(); renderCartBar(); saveState();
+      };
+    });
+  }
+  $('orderTotal').textContent = "฿" + cartTotalPrice();
+}
+
+$('openOrderBtn').onclick = ()=>{ renderOrderSheet(); $('overlay').classList.add('show'); };
+$('closeSheet').onclick = ()=>{ $('overlay').classList.remove('show'); };
+
+// ============================================================
+// SEND ORDER: MERGE WITH EXISTING UNPAID ORDER
+// ============================================================
+$('sendOrderBtn').onclick = async ()=>{
+  if(cartCount()===0) return;
+
+  const tableNumber = 5;
+  // Find an existing order for this table that is NOT paid (paidAt === undefined)
+  let existingOrder = orders.find(o => o.table === tableNumber && !o.paidAt);
+
+  const newItems = cart.map(l => {
+    const menuItem = MENU.find(m => m.id === l.menuId);
+    return {
+      name: l.name,
+      qty: l.qty,
+      price: l.price,
+      note: l.note || '',
+      status: 'pending',
+      emoji: menuItem ? menuItem.emoji : '🍽️'
+    };
+  });
+  const newTotal = cartTotalPrice();
+
+  if (existingOrder) {
+    // Merge: add new items and update total
+    existingOrder.items.push(...newItems);
+    existingOrder.total += newTotal;
+    // Keep createdAt as original (or update to now? We'll keep original)
+    // If you want to update time to latest order, uncomment below:
+    // existingOrder.createdAt = Date.now();
+  } else {
+    // Create new order
+    const newOrder = {
+      id: orderCounter++,
+      table: tableNumber,
+      items: newItems,
+      total: newTotal,
+      createdAt: Date.now()
+    };
+    orders.unshift(newOrder);
+  }
+
+  cart = [];
+  saveState();
+  renderMenu(); renderCartBar();
+  $('overlay').classList.remove('show');
+  showToast('📨 ส่งออเดอร์เข้าครัว!');
+  playBeep();
+  updateKitchenBadge();
+  renderKitchen();
+  renderBilling();
+
+  // ส่งขึ้น Google Sheet + แจ้งเตือนครัวผ่าน LINE
+  await apiPost({ action:'createOrder', table: tableNumber, items: newItems, total: newTotal });
+  syncFromServer();
+};
+
+// ============================================================
+// RENDER: KITCHEN (show pending items grouped by table)
+// ============================================================
+function renderKitchen(){
+  const pendingOrders = orders.filter(o => o.items.some(i => i.status === 'pending') && !o.paidAt);
+  const container = $('kitchenContent');
+  if(pendingOrders.length===0){
+    container.innerHTML = `<div class="empty-state"><div class="big">🧑‍🍳</div>ไม่มีรายการที่รอทำ<br><span style="font-size:12.5px;">ทุกเมนูเสร็จแล้ว!</span></div>`;
+    return;
+  }
+  let html = '';
+  const sorted = [...pendingOrders].sort((a,b)=>a.table - b.table);
+  sorted.forEach(o => {
+    const pendingItems = o.items.filter(i => i.status === 'pending');
+    if(pendingItems.length===0) return;
+    html += `<div class="kitchen-group">
+      <div class="group-header">
+        <span>🍽️ โต๊ะ ${o.table}</span>
+        <span class="order-id">ออเดอร์ #${o.id} · ${elapsedLabel(o.createdAt)}</span>
+      </div>`;
+    pendingItems.forEach((item) => {
+      html += `
+        <div class="kitchen-item-card">
+          <div class="left">
+            <span class="emoji">${item.emoji || '🍽️'}</span>
+            <span class="name">${item.name}</span>
+            <span class="qty">x${item.qty}</span>
+            ${item.note ? `<span class="note">📝 ${item.note}</span>` : ''}
+          </div>
+          <button class="done-btn" data-order="${o.id}" data-item="${o.items.indexOf(item)}">✅ ทำเสร็จ</button>
+        </div>
+      `;
+    });
+    html += `</div>`;
+  });
+  container.innerHTML = html;
+
+  container.querySelectorAll('.done-btn').forEach(btn => {
+    btn.onclick = async ()=>{
+      const orderId = +btn.dataset.order;
+      const itemIdx = +btn.dataset.item;
+      const order = orders.find(o => o.id === orderId);
+      if(order && order.items[itemIdx]){
+        const itemName = order.items[itemIdx].name;
+        order.items[itemIdx].status = 'done';
+        saveState();
+        updateKitchenBadge();
+        renderKitchen();
+        renderCustomerHistory();
+        showToast('✅ ' + itemName + ' เสร็จแล้ว!');
+        renderBilling();
+        await apiPost({ action:'updateItemStatus', orderId: orderId, itemIndex: itemIdx, status:'done' });
+        syncFromServer();
+      }
+    };
+  });
+}
+
+// ============================================================
+// RENDER: BILLING (show one card per unpaid table)
+// ============================================================
+function renderBilling(){
+  // Group unpaid orders by table (orders that have at least one item done and not paid)
+  const unpaidOrders = orders.filter(o => !o.paidAt);
+  const paidOrders = orders.filter(o => o.paidAt);
+  const container = $('billingContent');
+  let html = '';
+
+  if(unpaidOrders.length===0){
+    html += `<div class="empty-state" style="padding:20px;"><div class="big">⏳</div>ยังไม่มีออเดอร์ที่พร้อมจ่าย</div>`;
+  } else {
+    // Group by table, merge all items and total
+    const tableMap = {};
+    unpaidOrders.forEach(o => {
+      if(!tableMap[o.table]) tableMap[o.table] = { orders: [], total: 0, items: [] };
+      tableMap[o.table].orders.push(o);
+      tableMap[o.table].total += o.total;
+      tableMap[o.table].items.push(...o.items);
+    });
+
+    html += `<h3 style="font-family:'Kanit'; margin:10px 0 8px; color:var(--accent);">🧾 รอชำระเงิน</h3>`;
+    Object.keys(tableMap).forEach(table => {
+      const data = tableMap[table];
+      const orderIds = data.orders.map(o => '#'+o.id).join(', ');
+      html += `
+      <div class="bill-card-ready">
+        <div class="status-badge">💳 รอชำระเงิน</div>
+        <div class="bill-head">
+          <div class="t">โต๊ะ ${table} (ออเดอร์ ${orderIds})</div>
+          <div style="font-size:13px; color:rgba(31,36,33,0.5);">${formatDate(data.orders[0].createdAt)}</div>
+        </div>
+        ${data.items.map(i=>`<div class="bill-item"><span>${i.qty}x ${i.name}</span><span>฿${i.qty*i.price}</span></div>`).join('')}
+        <div class="bill-total"><span>รวมทั้งหมด</span><span>฿${data.total}</span></div>
+        <button class="pay-btn" data-table="${table}">💰 ชำระเงิน</button>
+      </div>`;
+    });
+  }
+
+  if(paidOrders.length>0){
+    html += `<h3 style="font-family:'Kanit'; margin:20px 0 8px; color:var(--success);">✅ ชำระแล้ว (ล่าสุด)</h3>`;
+    const recent = paidOrders.slice(0,5);
+    recent.forEach(o => {
+      html += `
+      <div class="bill-card" style="border-left-color:var(--success); background:var(--paper);">
+        <div class="bill-head"><div class="t">โต๊ะ ${o.table} #${o.id}</div><div class="cnt">${formatDate(o.paidAt)}</div></div>
+        ${o.items.map(i=>`<div class="bill-item"><span>${i.qty}x ${i.name}</span><span>฿${i.qty*i.price}</span></div>`).join('')}
+        <div class="bill-total"><span>ยอดรวม</span><span>฿${o.total}</span></div>
+      </div>`;
+    });
+    if(paidOrders.length>5) html += `<div style="text-align:center; padding:8px; color:rgba(31,36,33,0.5);">... และอีก ${paidOrders.length-5} รายการ ดูที่ "สรุปยอด"</div>`;
+  }
+
+  container.innerHTML = html;
+  container.querySelectorAll('[data-table]').forEach(b=>{
+    b.onclick = ()=>{
+      const table = +b.dataset.table;
+      // Find all unpaid orders for this table
+      const unpaidForTable = orders.filter(o => o.table === table && !o.paidAt);
+      if(unpaidForTable.length === 0) return;
+      // Show payment confirmation for the combined order
+      showPaymentConfirm(table, unpaidForTable);
+    };
+  });
+}
+
+// ============================================================
+// PAYMENT CONFIRM POPUP (for combined orders)
+// ============================================================
+function showPaymentConfirm(table, ordersToPay){
+  const overlay = $('paymentConfirmOverlay');
+  const header = $('confirmHeader');
+  const itemsContainer = $('confirmItems');
+  const totalEl = $('confirmTotal');
+
+  // Combine all items
+  const allItems = ordersToPay.flatMap(o => o.items);
+  const total = ordersToPay.reduce((sum, o) => sum + o.total, 0);
+  const orderIds = ordersToPay.map(o => '#'+o.id).join(', ');
+
+  header.textContent = `โต๊ะ ${table} · ออเดอร์ ${orderIds}`;
+  itemsContainer.innerHTML = allItems.map(i =>
+    `<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed var(--line-dark);">
+      <span>${i.qty}x ${i.name}</span>
+      <span>฿${i.qty*i.price}</span>
+    </div>`
+  ).join('');
+  totalEl.textContent = '฿' + total;
+
+  overlay.classList.add('show');
+
+  // Remove old listeners
+  const yesBtn = $('confirmYes');
+  const noBtn = $('confirmNo');
+  const newYes = yesBtn.cloneNode(true);
+  const newNo = noBtn.cloneNode(true);
+  yesBtn.parentNode.replaceChild(newYes, yesBtn);
+  noBtn.parentNode.replaceChild(newNo, noBtn);
+
+  newYes.onclick = async ()=>{
+    // Mark all orders as paid
+    ordersToPay.forEach(o => {
+      o.paidAt = Date.now();
+    });
+    saveState();
+    overlay.classList.remove('show');
+    renderBilling();
+    renderHistory();
+    showToast('💰 โต๊ะ '+table+' ชำระเงินเรียบร้อย');
+    await apiPost({ action:'markPaid', table: table });
+    syncFromServer();
+  };
+  newNo.onclick = ()=>{
+    overlay.classList.remove('show');
+  };
+}
+
+// ============================================================
+// HISTORY / SUMMARY
+// ============================================================
+function renderHistory(){
+  const paid = orders.filter(o=>o.paidAt);
+  const container = $('historyContent');
+  if(paid.length===0){
+    container.innerHTML = `<div class="empty-state"><div class="big">📊</div>ยังไม่มีประวัติการชำระเงิน</div>`;
+    return;
+  }
+  const todayPaid = paid.filter(o=>isToday(o.paidAt));
+  const todayTotal = todayPaid.reduce((s,o)=>s+o.total,0);
+  const monthPaid = paid.filter(o=>isThisMonth(o.paidAt));
+  const monthTotal = monthPaid.reduce((s,o)=>s+o.total,0);
+
+  let html = `
+    <div class="summary-card">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div><span style="font-weight:600;">💰 วันนี้</span> <span style="font-family:'Kanit'; font-size:20px; color:var(--accent);">฿${todayTotal}</span> (${todayPaid.length} ออเดอร์)</div>
+        <div><span style="font-weight:600;">📆 เดือนนี้</span> <span style="font-family:'Kanit'; font-size:20px; color:var(--accent);">฿${monthTotal}</span> (${monthPaid.length} ออเดอร์)</div>
+      </div>
+    </div>
+    <div style="font-family:'Kanit'; font-weight:600; margin:12px 0 6px;">📋 รายการทั้งหมดที่ชำระแล้ว</div>
+  `;
+  const sorted = [...paid].sort((a,b)=>(b.paidAt||0)-(a.paidAt||0));
+  html += sorted.map(o=>`
+    <div class="summary-card" style="padding:14px;">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap;">
+        <div><span style="font-weight:600;">ออเดอร์ #${o.id}</span> โต๊ะ ${o.table}</div>
+        <div style="font-size:13px; color:rgba(31,36,33,0.5);">${formatDate(o.paidAt)}</div>
+      </div>
+      ${o.items.map(i=>`<div class="bill-item" style="font-size:13px;"><span>${i.qty}x ${i.name}</span><span>฿${i.qty*i.price}</span></div>`).join('')}
+      <div class="bill-total" style="padding-top:6px; font-size:15px;"><span>รวม</span><span>฿${o.total}</span></div>
+    </div>
+  `).join('');
+  container.innerHTML = html;
+}
+
+// ============================================================
+// CUSTOMER HISTORY (read only) with status
+// ============================================================
+function renderCustomerHistory(){
+  const customerOrders = orders.filter(o=>o.table===5).sort((a,b)=>b.createdAt - a.createdAt);
+  const container = $('customerHistoryList');
+  if(customerOrders.length===0){
+    container.innerHTML = '<div style="padding:20px 0;color:rgba(31,36,33,0.4);text-align:center;">ยังไม่มีประวัติการสั่ง</div>';
+    return;
+  }
+  container.innerHTML = customerOrders.map(o=>{
+    const statusMap = { pending:'⏳ รอทำ', done:'✅ เสร็จแล้ว' };
+    return `
+    <div class="history-order-item">
+      <div class="hdr">
+        <span>ออเดอร์ #${o.id}</span>
+        <span style="font-size:12px; color:rgba(31,36,33,0.5);">${formatDate(o.createdAt)}</span>
+      </div>
+      ${o.items.map(i=>`
+        <div style="font-size:13px; padding:2px 0; display:flex; justify-content:space-between;">
+          <span>${i.qty}x ${i.name} ${i.note?'📝'+i.note:''}</span>
+          <span style="color:${i.status==='done'?'var(--success)':'var(--danger)'};">${statusMap[i.status]||i.status}</span>
+        </div>
+      `).join('')}
+      <div style="font-family:'Kanit'; font-weight:600; margin-top:4px;">รวม ฿${o.total}</div>
+    </div>
+  `}).join('');
+}
+
+// ============================================================
+// ADMIN: MENU MANAGEMENT
+// ============================================================
+function renderAdmin(){
+  const q = adminSearchText.trim().toLowerCase();
+  const items = MENU.filter(x => q==="" || x.name.toLowerCase().includes(q));
+  if(items.length===0){
+    $('adminContent').innerHTML = '<div class="empty-state"><div class="big">🔍</div>ไม่พบเมนู</div>';
+    return;
+  }
+  $('adminContent').innerHTML = items.map(x=>`
+    <div class="admin-row">
+      <div class="info">
+        <div class="em">${x.emoji}</div>
+        <div><div class="nm">${x.name}</div><div class="pr">฿${x.price} · ${x.cat}</div></div>
+      </div>
+      <div class="actions">
+        <button class="edit-btn" data-edit="${x.id}">✏️</button>
+        <button class="toggle-btn ${x.available?'':'off'}" data-toggle="${x.id}"><div class="dot"></div></button>
+      </div>
+    </div>
+  `).join('');
+  $('adminContent').querySelectorAll('[data-edit]').forEach(b=>{
+    b.onclick = ()=>{
+      const id = +b.dataset.edit;
+      openAdminMenuModal(id);
+    };
+  });
+  $('adminContent').querySelectorAll('[data-toggle]').forEach(b=>{
+    b.onclick = async ()=>{
+      const item = MENU.find(x=>x.id === +b.dataset.toggle);
+      if(item){
+        item.available = !item.available;
+        saveState(); renderAdmin(); renderMenu();
+        showToast(item.available?'✅ '+item.name+' เปิดขาย':'⛔ '+item.name+' ปิดขาย');
+        await apiPost({ action:'toggleMenuItem', id: item.id });
+        syncFromServer();
+      }
+    };
+  });
+}
+
+function openAdminMenuModal(editId=null){
+  editingMenuId = editId;
+  const title = editId ? 'แก้ไขเมนู' : 'เพิ่มเมนูใหม่';
+  $('adminModalTitle').textContent = title;
+  
+  const catSelect = $('adminMenuCat');
+  catSelect.innerHTML = CATS.filter(c=>c!=='ทั้งหมด').map(c => `<option value="${c}">${c}</option>`).join('');
+  
+  if(editId){
+    const item = MENU.find(x=>x.id===editId);
+    if(item){
+      $('adminMenuName').value = item.name;
+      $('adminMenuCat').value = item.cat;
+      $('adminMenuPrice').value = item.price;
+      $('adminMenuEmoji').value = item.emoji;
+      $('adminMenuDesc').value = item.desc;
+      $('adminMenuImage').value = item.image || '';
+    }
+  } else {
+    $('adminMenuName').value = '';
+    $('adminMenuCat').value = CATS[1];
+    $('adminMenuPrice').value = '';
+    $('adminMenuEmoji').value = '';
+    $('adminMenuDesc').value = '';
+    $('adminMenuImage').value = '';
+  }
+  $('adminMenuModal').classList.add('show');
+}
+
+async function saveAdminMenu(){
+  const name = $('adminMenuName').value.trim();
+  const cat = $('adminMenuCat').value;
+  const price = parseInt($('adminMenuPrice').value);
+  const emoji = $('adminMenuEmoji').value.trim() || '🍽️';
+  const desc = $('adminMenuDesc').value.trim();
+  const image = $('adminMenuImage').value.trim() || null;
+
+  if(!name || isNaN(price) || price<0){
+    showToast('กรุณากรอกข้อมูลให้ครบถ้วน');
+    return;
+  }
+
+  let savedItem;
+  if(editingMenuId){
+    const item = MENU.find(x=>x.id===editingMenuId);
+    if(item){
+      item.name = name; item.cat = cat; item.price = price;
+      item.emoji = emoji; item.desc = desc; item.image = image;
+      savedItem = item;
+    }
+  } else {
+    const newId = MENU.reduce((max, x)=>Math.max(max, x.id), 0) + 1;
+    const newItem = m(newId, cat, name, price, emoji, desc, image);
+    MENU.push(newItem);
+    savedItem = newItem;
+  }
+  saveState();
+  $('adminMenuModal').classList.remove('show');
+  renderAdmin();
+  renderMenu();
+  showToast('✅ บันทึกเมนูเรียบร้อย');
+  await apiPost({ action:'saveMenuItem', item: savedItem });
+  syncFromServer();
+}
+
+$('adminMenuSaveBtn').onclick = saveAdminMenu;
+$('adminMenuCancelBtn').onclick = ()=>{ $('adminMenuModal').classList.remove('show'); };
+$('addMenuItemBtn').onclick = ()=>{ openAdminMenuModal(null); };
+
+// ============================================================
+// SEARCH & TABS
+// ============================================================
+$('searchBox').oninput = (e)=>{ searchText = e.target.value; renderMenu(); };
+$('adminSearch').oninput = (e)=>{ adminSearchText = e.target.value; renderAdmin(); };
+
+const tabs = {
+  tabCustomer: 'viewCustomer',
+  tabKitchen: 'viewKitchen',
+  tabBilling: 'viewBilling',
+  tabHistory: 'viewHistory',
+  tabAdmin: 'viewAdmin'
+};
+Object.keys(tabs).forEach(tabId=>{
+  $(tabId).onclick = ()=>{
+    Object.keys(tabs).forEach(t=>{ $(t).classList.remove('active'); $(tabs[t]).classList.remove('active'); });
+    $(tabId).classList.add('active'); $(tabs[tabId]).classList.add('active');
+    if(tabId==='tabKitchen'){ updateKitchenBadge(); renderKitchen(); }
+    if(tabId==='tabBilling') renderBilling();
+    if(tabId==='tabHistory') renderHistory();
+    if(tabId==='tabAdmin') renderAdmin();
+  };
+});
+
+// ============================================================
+// CUSTOMER HISTORY OVERLAY
+// ============================================================
+$('customerHistoryBtn').onclick = ()=>{
+  renderCustomerHistory();
+  $('customerHistoryOverlay').classList.add('show');
+};
+$('customerHistoryClose').onclick = ()=>{
+  $('customerHistoryOverlay').classList.remove('show');
+};
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ============================================================
+// AUTO-REFRESH (ดึงข้อมูลล่าสุดจาก Google Sheet ทุก 5 วิ ให้ทุกเครื่องเห็นตรงกัน)
+// ============================================================
+setInterval(()=>{
+  syncFromServer();
+}, 5000);
+
+// ============================================================
+// INIT
+// ============================================================
+loadState();
+renderCats();
+renderMenu();
+renderCartBar();
+renderKitchen();
+renderBilling();
+renderHistory();
+renderAdmin();
+updateKitchenBadge();
+
+if(apiConfigured()){
+  syncFromServer();
+} else {
+  console.warn('⚠️ ยังไม่ได้ตั้งค่า API_URL — แอปทำงานแบบออฟไลน์ (localStorage) เท่านั้น ดูวิธีตั้งค่าในคู่มือติดตั้ง.md');
+}
+
+console.log('🍜 ครัวไว QR Order System Ready (รวมออเดอร์)');
+</script>
+</body>
+</html>
