@@ -151,6 +151,14 @@
   }
   .qty-ctrl .n{font-family:'Kanit'; font-weight:700; font-size:15px; min-width:16px; text-align:center;}
 
+  .qty-row.big .qty-ctrl{gap:14px;}
+  .qty-row.big .qty-ctrl button{width:42px; height:42px; font-size:22px; border-radius:11px;}
+  .qty-row.big .qty-ctrl .n{font-size:20px; min-width:34px;}
+  .qty-row.big .qty-ctrl input{width:56px; height:42px; text-align:center; font-family:'Kanit'; font-weight:700; font-size:20px; border:1px solid var(--line-dark); border-radius:11px; background:var(--paper2); color:var(--text-dark);}
+  .modal-send-btn{
+    width:100%; padding:13px; border-radius:12px; border:none; background:var(--text-dark);
+    color:#fff; font-family:'Kanit'; font-weight:600; font-size:14.5px; cursor:pointer; margin-top:8px;
+  }
   .chip-label{font-family:'Kanit'; font-weight:600; font-size:13px; margin-bottom:8px;}
   .chips{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px;}
   .chip{
@@ -448,7 +456,19 @@
     <input type="text" class="note-input" id="itemCustomerName" placeholder="กรอกชื่อ..." style="margin-bottom:12px;">
     <div class="chip-label">แผนก</div>
     <input type="text" class="note-input" id="itemCustomerDept" placeholder="กรอกแผนก..." style="margin-bottom:16px;">
-    <button class="modal-add-btn" id="itemModalAddBtn">เพิ่มลงตะกร้า</button>
+    <div class="qty-row big">
+      <div class="label">จำนวน</div>
+      <div class="qty-ctrl">
+        <button type="button" id="itemQtyMinus">−</button>
+        <input type="number" id="itemQty" value="1" min="1" max="99" inputmode="numeric">
+        <button type="button" id="itemQtyPlus">+</button>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-family:'Kanit'; font-weight:700; margin:-6px 0 12px;">
+      <span>รวม</span><span id="itemModalSum" style="color:var(--accent);">฿0</span>
+    </div>
+    <button class="modal-add-btn" id="itemModalSendBtn">🚀 ส่งออเดอร์เลย</button>
+    <button class="modal-send-btn" id="itemModalAddBtn">🛒 เพิ่มลงตะกร้า (สั่งเมนูอื่นต่อ)</button>
     <button class="modal-cancel" id="itemModalCancel">ยกเลิก</button>
   </div>
 </div>
@@ -924,29 +944,54 @@ function openItemModal(menuId){
   $('itemModalPrice').textContent = "฿" + pendingItem.price + " ต่อหน่วย";
   $('itemCustomerName').value = "";
   $('itemCustomerDept').value = "";
+  $('itemQty').value = 1;
+  updateItemSum();
   $('itemOverlay').classList.add('show');
 }
 
 $('itemModalCancel').onclick = ()=>{ $('itemOverlay').classList.remove('show'); };
 
-$('itemModalAddBtn').onclick = ()=>{
+function getItemQty(){
+  let n = parseInt($('itemQty').value);
+  if(isNaN(n) || n < 1) n = 1;
+  if(n > 99) n = 99;
+  return n;
+}
+function updateItemSum(){
+  if(pendingItem) $('itemModalSum').textContent = '฿' + (pendingItem.price * getItemQty());
+}
+$('itemQtyMinus').onclick = ()=>{ $('itemQty').value = Math.max(1, getItemQty()-1); updateItemSum(); };
+$('itemQtyPlus').onclick = ()=>{ $('itemQty').value = Math.min(99, getItemQty()+1); updateItemSum(); };
+$('itemQty').oninput = updateItemSum;
+$('itemQty').onblur = ()=>{ $('itemQty').value = getItemQty(); updateItemSum(); };
+
+// ใส่รายการลงตะกร้า (คืน true ถ้าสำเร็จ)
+function addPendingToCart(){
   const customerName = $('itemCustomerName').value.trim();
   const customerDept = $('itemCustomerDept').value.trim();
   if(!customerName || !customerDept){
     showToast('⚠️ กรุณากรอกชื่อและแผนก');
-    return;
+    return false;
   }
   cart.push({
     lineId: lineCounter++,
     menuId: pendingItem.id,
     name: pendingItem.name,
     price: pendingItem.price,
-    qty: 1,
+    qty: getItemQty(),
     note: `${customerName} · ${customerDept}`
   });
   $('itemOverlay').classList.remove('show');
   saveState();
   renderMenu(); renderCartBar();
+  return true;
+}
+
+$('itemModalAddBtn').onclick = ()=>{ addPendingToCart(); };
+
+// กดส่งเลย: ใส่ลงตะกร้าแล้วส่งออเดอร์ทันที (ส่งทั้งตะกร้า)
+$('itemModalSendBtn').onclick = ()=>{
+  if(addPendingToCart()) $('sendOrderBtn').onclick();
 };
 
 // ============================================================
