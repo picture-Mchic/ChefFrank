@@ -133,6 +133,21 @@
     align-items:flex-end; justify-content:center; z-index:50;
   }
   .overlay.show{display:flex;}
+  .overlay.center{align-items:center; padding:20px; z-index:90;}
+  .success-card{
+    background:var(--paper); color:var(--text-dark); width:100%; max-width:380px; border-radius:24px;
+    padding:20px 20px 22px; text-align:center; animation:popIn .35s cubic-bezier(.2,1.3,.4,1);
+    max-height:92vh; overflow-y:auto;
+  }
+  @keyframes popIn{from{transform:scale(.85); opacity:0} to{transform:scale(1); opacity:1}}
+  .success-card img{width:100%; max-height:46vh; object-fit:contain; border-radius:16px; display:block; margin:0 auto 14px; background:var(--paper2);}
+  .success-card h3{font-family:'Kanit'; font-weight:700; font-size:20px; line-height:1.35; margin-bottom:4px;}
+  .success-card h3 .who{color:var(--accent);}
+  .success-card p{font-size:13.5px; color:rgba(31,36,33,0.6); margin-bottom:16px;}
+  .success-card button{
+    width:100%; padding:13px; border:none; border-radius:12px; background:var(--accent); color:#fff;
+    font-family:'Kanit'; font-weight:600; font-size:15px; cursor:pointer;
+  }
   .sheet{
     background:var(--paper); color:var(--text-dark); width:100%; max-width:480px;
     border-radius:22px 22px 0 0; padding:22px; animation:slideUp .3s ease;
@@ -444,6 +459,16 @@
     <div style="font-family:'Kanit'; font-weight:600; margin:4px 0 8px;">🔗 ลิงก์ QR ของแต่ละห้อง (ให้ลูกค้าสแกน)</div>
     <div id="roomLinks" style="margin-bottom:18px;"></div>
     <div id="adminContent"></div>
+  </div>
+</div>
+
+<!-- ORDER SUCCESS POPUP (customer) -->
+<div class="overlay center" id="successOverlay">
+  <div class="success-card">
+    <img id="successImg" src="https://i.postimg.cc/htSnVjyR/Chat-GPT-Image-9-t-kh-2569-12-26-04.png" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">
+    <h3>✅ ได้รับออเดอร์จาก<br><span class="who" id="successName"></span> แล้ว</h3>
+    <p>ขอบคุณครับ ทางร้านกำลังเตรียมให้</p>
+    <button id="successClose">ตกลง</button>
   </div>
 </div>
 
@@ -1041,6 +1066,18 @@ $('closeSheet').onclick = ()=>{ $('overlay').classList.remove('show'); };
 // SEND ORDER
 // ============================================================
 let _sending = false;
+let _successTimer = null;
+(function preloadSuccessImg(){ const im = new Image(); im.referrerPolicy='no-referrer'; im.src = $('successImg').src; })();
+function showOrderSuccess(items){
+  const names = [...new Set(items.map(i => String(i.note||'').split(' · ')[0].trim()).filter(Boolean))];
+  $('successName').textContent = names.length ? names.join(', ') : 'ลูกค้า';
+  $('successImg').style.display = '';
+  $('successOverlay').classList.add('show');
+  clearTimeout(_successTimer);
+  _successTimer = setTimeout(()=>$('successOverlay').classList.remove('show'), 12000);
+}
+$('successClose').onclick = ()=>{ $('successOverlay').classList.remove('show'); clearTimeout(_successTimer); };
+$('successOverlay').onclick = (e)=>{ if(e.target.id==='successOverlay') $('successClose').onclick(); };
 $('sendOrderBtn').onclick = async ()=>{
   if(cartCount()===0 || _sending) return;
   _sending = true;
@@ -1064,6 +1101,7 @@ $('sendOrderBtn').onclick = async ()=>{
   saveState();
   renderMenu(); renderCartBar();
   $('overlay').classList.remove('show');
+  showOrderSuccess(newItems);
 
   // ถามเลขล่าสุดจากเซิร์ฟเวอร์ก่อน กันเลขออเดอร์ซ้ำกับเครื่องอื่น/ข้อมูลเก่า
   try{
@@ -1090,7 +1128,7 @@ $('sendOrderBtn').onclick = async ()=>{
   saveState();
   renderMenu(); renderCartBar();
   $('overlay').classList.remove('show');
-  showToast('📨 ส่งออเดอร์เข้ารายการ!');
+  /* popup แสดงแทน toast */
   playBeep();
   updateKitchenBadge();
   renderCustomerProgress();
