@@ -800,7 +800,7 @@ async function resyncAhead(tasks){
     for(const t of tasks){
       if(t.type==='create'){
         const o = t.order;
-        if((o._tries||0) >= 3 || Date.now()-(Number(o.createdAt)||0) < 15000) continue;
+        if((o._tries||0) >= 1 || Date.now()-(Number(o.createdAt)||0) < 45000) continue;
         o._tries = (o._tries||0)+1;
         const res = await apiPost({ action:'createOrder', id:o.id, sessionId:o.sessionId, room:o.room||'', items:o.items, total:o.total });
         if(res){ o.unsynced = false; saveState(); }
@@ -995,8 +995,11 @@ $('closeSheet').onclick = ()=>{ $('overlay').classList.remove('show'); };
 // ============================================================
 // SEND ORDER
 // ============================================================
+let _sending = false;
 $('sendOrderBtn').onclick = async ()=>{
-  if(cartCount()===0) return;
+  if(cartCount()===0 || _sending) return;
+  _sending = true;
+  $('sendOrderBtn').disabled = true;
 
   const newItems = cart.map(l => {
     const menuItem = MENU.find(m => m.id === l.menuId);
@@ -1010,6 +1013,12 @@ $('sendOrderBtn').onclick = async ()=>{
     };
   });
   const newTotal = cartTotalPrice();
+
+  // เคลียร์ตะกร้า + ปิดหน้าต่างทันที กันกดส่งซ้ำระหว่างรอเซิร์ฟเวอร์
+  cart = [];
+  saveState();
+  renderMenu(); renderCartBar();
+  $('overlay').classList.remove('show');
 
   // ถามเลขล่าสุดจากเซิร์ฟเวอร์ก่อน กันเลขออเดอร์ซ้ำกับเครื่องอื่น/ข้อมูลเก่า
   try{
@@ -1045,6 +1054,8 @@ $('sendOrderBtn').onclick = async ()=>{
 
   const postRes = await apiPost({ action:'createOrder', id: newOrderId, sessionId: sessionWithRoom(), room: ROOM, items: newItems, total: newTotal });
   if(postRes){ newOrder.unsynced = false; saveState(); }
+  _sending = false;
+  $('sendOrderBtn').disabled = false;
   syncFromServer();
 };
 
