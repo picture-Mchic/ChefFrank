@@ -606,7 +606,7 @@ const CATS = ["ทั้งหมด"];
 function m(id,cat,name,price,emoji,desc,image){ return {id,cat,name,price,emoji,desc,available:true,image:image||null}; }
 
 let MENU = [
-  m(1,"ทั้งหมด","ไข่เค็มไชยา",100,"🥚","1 กล่อง (10 ฟอง)"),
+  m(1,"ทั้งหมด","ไข่เค็มไชยา",100,"🥚","1 กล่อง 7 ฟอง"),
   m(2,"ทั้งหมด","ส้มโอ",100,"🍊","1 ลูก"),
 ];
 
@@ -761,6 +761,8 @@ function loadState(){
     if(!raw) return;
     const data = JSON.parse(raw);
     if(Array.isArray(data.menu) && data.menu.length) MENU = data.menu;
+    // แก้ข้อความเดิมที่เคยบันทึกไว้ในเครื่อง ให้เป็น "1 กล่อง 7 ฟอง"
+    MENU.forEach(x=>{ if(x.desc==='1 กล่อง (10 ฟอง)' || x.desc==='1 กล่อง (7 ลูก)') x.desc = '1 กล่อง 7 ฟอง'; });
     if(data.orders) orders = filterFresh(data.orders);
     if(data.orderCounter) orderCounter = data.orderCounter;
     if(data.lineCounter) lineCounter = data.lineCounter;
