@@ -627,7 +627,7 @@ function filterFresh(list){
   return (list||[]).filter(o=>{
     let t = Number(o.createdAt);
     if(!t || isNaN(t)) t = Date.parse(o.createdAt);
-    return !t || isNaN(t) || t >= cut;
+    return !!t && !isNaN(t) && t >= cut; // ไม่มีวันที่/อ่านวันที่ไม่ได้ = ข้อมูลเก่า ซ่อนทิ้ง
   });
 }
 
@@ -749,6 +749,75 @@ async function apiPost(payload){
   }catch(e){ return null; }
 }
 
+// รวมข้อมูลเซิร์ฟเวอร์ + ในเครื่อง "ไม่ทับ" ข้อมูลที่เครื่องนี้มีอยู่
+// - ออเดอร์ที่มีแค่ในเครื่อง (ส่งยังไม่ถึงเซิร์ฟเวอร์) ยังอยู่
+// - รายการที่ทำเสร็จ / ชำระเงินแล้วในเครื่อง ไม่ถูกเซิร์ฟเวอร์ย้อนกลับเป็นยังไม่เสร็จ
+function orderKey(o){ return String(o.id) + '|' + sessionBase(o.sessionId); }
+function mergeOrders(serverList){
+  const tasks = [];
+  const localMap = {};
+  orders.forEach(o=>{ localMap[orderKey(o)] = o; });
+  const seen = {};
+  const result = serverList.map(so=>{
+    const k = orderKey(so);
+    seen[k] = true;
+    const lo = localMap[k];
+    const merged = Object.assign({}, so);
+    if(!Array.isArray(merged.items)) merged.items = [];
+    if(lo){
+      merged.items = so.items.map((it,i)=>{
+        const l = lo.items && lo.items[i];
+        let out = it;
+        if(l && !it.emoji && l.emoji) out = Object.assign({}, out, {emoji:l.emoji});
+        if(l && l.status==='done' && it.status!=='done'){
+          out = Object.assign({}, out, {status:'done'});
+          tasks.push({type:'item', orderId:so.id, idx:i});
+        }
+        return out;
+      });
+      if(lo.paidAt && !so.paidAt){
+        merged.paidAt = lo.paidAt;
+        tasks.push({type:'pay', orderId:so.id});
+      }
+      if(!merged.room && lo.room) merged.room = lo.room;
+      if(lo.unsynced) merged.unsynced = false;
+    }
+    return merged;
+  });
+  orders.forEach(lo=>{
+    if(!seen[orderKey(lo)]){
+      result.push(lo);
+      if(lo.unsynced) tasks.push({type:'create', order:lo});
+    }
+  });
+  result.sort((a,b)=>(Number(b.createdAt)||0)-(Number(a.createdAt)||0));
+  orders = result;
+  return tasks;
+}
+
+// ส่งซ้ำสิ่งที่เซิร์ฟเวอร์ยังไม่ได้รับ
+let _resyncing = false;
+async function resyncAhead(tasks){
+  if(_resyncing || !tasks.length || !apiConfigured()) return;
+  _resyncing = true;
+  try{
+    for(const t of tasks){
+      if(t.type==='create'){
+        const o = t.order;
+        if((o._tries||0) >= 3 || Date.now()-(Number(o.createdAt)||0) < 15000) continue;
+        o._tries = (o._tries||0)+1;
+        const res = await apiPost({ action:'createOrder', id:o.id, sessionId:o.sessionId, room:o.room||'', items:o.items, total:o.total });
+        if(res){ o.unsynced = false; saveState(); }
+      } else if(t.type==='item'){
+        await apiPost({ action:'updateItemStatus', orderId:t.orderId, itemIndex:t.idx, status:'done' });
+      } else if(t.type==='pay'){
+        await apiPost({ action:'markPaid', orderId:t.orderId });
+      }
+    }
+  }catch(e){}
+  _resyncing = false;
+}
+
 async function syncFromServer(){
   if(!apiConfigured() || _syncing) return;
   _syncing = true;
@@ -768,9 +837,11 @@ async function syncFromServer(){
       });
     }
     if(data.orders) {
-      orders = filterFresh(data.orders);
-      const maxId = orders.reduce((mx,o)=>Math.max(mx,o.id||0), 0);
-      orderCounter = Math.max(orderCounter, maxId+1);
+      // เลขออเดอร์ต่อจากเลขสูงสุดในเซิร์ฟเวอร์ (รวมแถวเก่าที่ซ่อนอยู่) กันเลขซ้ำกับของเก่า
+      const rawMax = data.orders.reduce((mx,o)=>Math.max(mx,Number(o.id)||0), 0);
+      orderCounter = Math.max(orderCounter, rawMax+1);
+      const tasks = mergeOrders(filterFresh(data.orders));
+      resyncAhead(tasks);
     }
     saveState();
     // รีเฟรช view ตามแท็บปัจจุบัน
@@ -782,6 +853,7 @@ async function syncFromServer(){
     if(activeTab === 'admin') renderAdmin();
     updateKitchenBadge();
     renderCustomerProgress();
+    if($('customerHistoryOverlay').classList.contains('show')) renderCustomerHistory();
   }catch(e){}
   _syncing = false;
 }
@@ -942,16 +1014,27 @@ $('sendOrderBtn').onclick = async ()=>{
     };
   });
   const newTotal = cartTotalPrice();
+
+  // ถามเลขล่าสุดจากเซิร์ฟเวอร์ก่อน กันเลขออเดอร์ซ้ำกับเครื่องอื่น/ข้อมูลเก่า
+  try{
+    const latest = await Promise.race([apiGet('getData'), new Promise(r=>setTimeout(()=>r(null),2500))]);
+    if(latest && latest.ok && Array.isArray(latest.orders)){
+      const rawMax = latest.orders.reduce((mx,o)=>Math.max(mx,Number(o.id)||0), 0);
+      orderCounter = Math.max(orderCounter, rawMax+1);
+    }
+  }catch(e){}
   const newOrderId = orderCounter++;
 
-  orders.unshift({
+  const newOrder = {
     id: newOrderId,
     sessionId: sessionWithRoom(),
     room: ROOM,
     items: newItems,
     total: newTotal,
-    createdAt: Date.now()
-  });
+    createdAt: Date.now(),
+    unsynced: apiConfigured()
+  };
+  orders.unshift(newOrder);
 
   cart = [];
   saveState();
@@ -964,7 +1047,8 @@ $('sendOrderBtn').onclick = async ()=>{
   if(activeTab === 'kitchen') renderKitchen();
   if(activeTab === 'billing') renderBilling();
 
-  await apiPost({ action:'createOrder', id: newOrderId, sessionId: sessionWithRoom(), room: ROOM, items: newItems, total: newTotal });
+  const postRes = await apiPost({ action:'createOrder', id: newOrderId, sessionId: sessionWithRoom(), room: ROOM, items: newItems, total: newTotal });
+  if(postRes){ newOrder.unsynced = false; saveState(); }
   syncFromServer();
 };
 
@@ -1517,7 +1601,7 @@ function startPolling(){
   _isPollingActive = true;
 
   setInterval(() => {
-    if(isStaff){
+    if(isStaff || orders.some(o=>isMine(o) && !o.paidAt)){
       syncFromServer();
     }
   }, POLL_INTERVAL);
