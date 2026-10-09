@@ -762,7 +762,7 @@ function loadState(){
     const data = JSON.parse(raw);
     if(Array.isArray(data.menu) && data.menu.length) MENU = data.menu;
     // แก้ข้อความเดิมที่เคยบันทึกไว้ในเครื่อง ให้เป็น "1 กล่อง 10 ฟอง"
-    MENU.forEach(x=>{ if(x.desc==='1 กล่อง (10 ฟอง)' || x.desc==='1 กล่อง (10 ลูก)') x.desc = '1 กล่อง 10 ฟอง'; });
+    MENU.forEach(x=>{ if(['1 กล่อง (10 ฟอง)','1 กล่อง (7 ลูก)','1 กล่อง 7 ฟอง'].includes(x.desc)) x.desc = '1 กล่อง 10 ฟอง'; });
     if(data.orders) orders = filterFresh(data.orders);
     if(data.orderCounter) orderCounter = data.orderCounter;
     if(data.lineCounter) lineCounter = data.lineCounter;
