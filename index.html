@@ -37,13 +37,14 @@
     display:flex; align-items:center; justify-content:space-between;
     margin-bottom:18px; flex-wrap:wrap; gap:12px;
   }
-  .brand{display:flex; align-items:center; gap:10px;}
+  .brand{display:flex; align-items:center; gap:14px;}
   .brand .mark{
-    width:36px; height:36px; border-radius:9px;
+    width:72px; height:72px; border-radius:16px; flex:0 0 auto;
     background:linear-gradient(135deg, var(--accent), var(--accent2));
-    display:flex; align-items:center; justify-content:center; font-size:18px;
+    display:flex; align-items:center; justify-content:center; font-size:32px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.35);
   }
-  .brand .name{font-family:'Kanit'; font-weight:700; font-size:19px;}
+  .brand .name{font-family:'Kanit'; font-weight:700; font-size:22px;}
   .brand .sub{font-size:11px; color:rgba(247,243,239,0.5); letter-spacing:1.5px; text-transform:uppercase;}
 
   .switcher{
@@ -345,8 +346,8 @@
 
   @media(max-width:420px){
     .app{padding:14px 12px 50px;}
-    .brand .mark{width:32px; height:32px; font-size:16px;}
-    .brand .name{font-size:17px;}
+    .brand .mark{width:56px; height:56px; border-radius:13px; font-size:26px;}
+    .brand .name{font-size:18px;}
     .switcher{padding:3px;}
     .switcher button{padding:7px 11px; font-size:11.5px;}
     .menu-grid{gap:9px;}
@@ -388,14 +389,6 @@
     <div style="display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
       <div class="table-badge" style="margin-bottom:0;" id="tableBadge">📍 สแกนแล้วเชื่อมต่อสำเร็จ</div>
       <button id="customerHistoryBtn" style="background:rgba(255,255,255,0.06); border:1px solid var(--line); color:var(--text-light); padding:6px 14px; border-radius:999px; font-family:'Kanit'; font-weight:600; font-size:12.5px; cursor:pointer;">📋 ประวัติการสั่ง</button>
-    </div>
-    <!-- Order Progress -->
-    <div class="order-progress" id="orderProgress">
-      <div class="prog-header">
-        <span>📦 สถานะออเดอร์</span>
-        <span id="progOrderId"></span>
-      </div>
-      <div id="progItems"></div>
     </div>
     <div class="search-row"><input id="searchBox" placeholder="ค้นหาเมนู เช่น กุ้ง, ผัด, ต้ม..."></div>
     <div class="cats" id="cats"></div>
@@ -560,6 +553,8 @@ let isStaff = false;
 let activeTab = 'customer';
 let _syncing = false;
 let _isPollingActive = false;
+
+const urlParams = new URLSearchParams(location.search);
 
 // รหัสประจำเครื่อง ใช้แยกว่าออเดอร์ไหนเป็นของผู้สั่งคนนี้ (ไม่แยกตามโต๊ะแล้ว)
 function getSessionId(){
@@ -891,6 +886,7 @@ $('sendOrderBtn').onclick = async ()=>{
 // ============================================================
 function renderCustomerProgress(){
   const container = $('orderProgress');
+  if(!container) return;
   const myOrders = orders.filter(o => o.sessionId === SESSION_ID && !o.paidAt).sort((a,b)=>b.createdAt-a.createdAt);
 
   if(myOrders.length===0){
@@ -1133,15 +1129,17 @@ function renderCustomerHistory(){
     const statusMap = { pending:'⏳ รอทำ', done:'✅ เสร็จแล้ว' };
     const allDone = o.items.every(i => i.status === 'done');
     const overall = o.paidAt ? '💰 ชำระแล้ว' : (allDone ? '✅ พร้อมเสิร์ฟ' : '⏳ กำลังทำ');
+    const who = o.items[0] && o.items[0].note ? o.items[0].note : '';
     return `
     <div class="history-order-item">
       <div class="hdr">
         <span>ออเดอร์ #${o.id} <span style="font-size:12px; font-weight:400; color:${o.paidAt?'var(--success)':'var(--pending)'};">${overall}</span></span>
         <span style="font-size:12px; color:rgba(31,36,33,0.5);">${formatDate(o.createdAt)}</span>
       </div>
+      ${who ? `<div style="font-size:12.5px; font-weight:600; color:var(--accent); margin:2px 0 4px;">👤 ${who}</div>` : ''}
       ${o.items.map(i=>`
         <div style="font-size:13px; padding:2px 0; display:flex; justify-content:space-between;">
-          <span>${i.qty}x ${i.name} ${i.note?'📝'+i.note:''}</span>
+          <span>${i.qty}x ${i.name}</span>
           <span style="color:${i.status==='done'?'var(--done)':'var(--pending)'};">${statusMap[i.status]||i.status}</span>
         </div>
       `).join('')}
